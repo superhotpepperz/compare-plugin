@@ -196,8 +196,6 @@ struct CompareInfo
 	DocCmpInfo				doc1;
 	DocCmpInfo				doc2;
 
-	bool					selectionCompare;
-
 	// Output data - filled by the compare engine
 	std::vector<diffInfo>	blockDiffs;
 };
@@ -1059,7 +1057,7 @@ void markLineDiffs(const CompareInfo& cmpInfo, const diffInfo& bd, int lineIdx)
 }
 
 
-bool markAllDiffs(CompareInfo& cmpInfo, AlignmentInfo_t& alignmentInfo)
+bool markAllDiffs(CompareInfo& cmpInfo, const CompareOptions& options, AlignmentInfo_t& alignmentInfo)
 {
 	progress_ptr& progress = ProgressDlg::Get();
 
@@ -1218,13 +1216,18 @@ bool markAllDiffs(CompareInfo& cmpInfo, AlignmentInfo_t& alignmentInfo)
 			return false;
 	}
 
-	if (cmpInfo.selectionCompare)
+	if (options.selectionCompare)
 	{
 		pMainAlignData->diffMask	= 0;
 		pMainAlignData->line		= toAlignmentLine(cmpInfo.doc1, alignLines.first);
 
 		pSubAlignData->diffMask		= 0;
 		pSubAlignData->line			= toAlignmentLine(cmpInfo.doc2, alignLines.second);
+
+		alignmentInfo.emplace_back(alignPair);
+
+		pMainAlignData->line		= options.selections[cmpInfo.doc1.view].second;
+		pSubAlignData->line			= options.selections[cmpInfo.doc2.view].second;
 
 		alignmentInfo.emplace_back(alignPair);
 	}
@@ -1244,8 +1247,6 @@ CompareResult runCompare(const CompareOptions& options, AlignmentInfo_t& alignme
 
 	cmpInfo.doc1.view	= MAIN_VIEW;
 	cmpInfo.doc2.view	= SUB_VIEW;
-
-	cmpInfo.selectionCompare	= options.selectionCompare;
 
 	if (options.selectionCompare)
 	{
@@ -1316,7 +1317,7 @@ CompareResult runCompare(const CompareOptions& options, AlignmentInfo_t& alignme
 	if (progress && !progress->NextPhase())
 		return CompareResult::COMPARE_CANCELLED;
 
-	if (!markAllDiffs(cmpInfo, alignmentInfo))
+	if (!markAllDiffs(cmpInfo, options, alignmentInfo))
 		return CompareResult::COMPARE_CANCELLED;
 
 	return CompareResult::COMPARE_MISMATCH;
